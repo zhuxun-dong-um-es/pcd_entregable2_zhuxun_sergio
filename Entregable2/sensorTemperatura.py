@@ -121,7 +121,7 @@ class MeanSV(Strategy):
         n = len(l)
         mean = round(reduce(lambda x, y: x+y, l) / n, 4)
         median = round(list(map(lambda x: x[(n+1)//2 - 1] if n%2 == 1 else ((x[n//2 - 1] + x[(n//2 - 1)+1])/2), [l]))[0], 4)
-        sv = round(np.sqrt(sum(map(lambda x: (x-mean)**2, l))/(n-1)), 4)
+        sv = round(np.sqrt(sum(map(lambda x: (x-mean)**2, l))/(n-1)), 4) if (n-1) != 0 else 0
             
         d["media"] = mean
         d["mediana"] = median
