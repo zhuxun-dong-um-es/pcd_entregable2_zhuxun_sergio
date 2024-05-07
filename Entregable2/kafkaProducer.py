@@ -4,9 +4,9 @@ import json
 from kafka import KafkaConsumer, KafkaProducer #Como se ejecutará por Colab, no es necesario instalar kafka
 
 class Producer:
-    def __init__(self, fichero, topic, freq):
+    def __init__(self, topic, freq):
         self.dato = (time.time(), round(random.uniform(10,40), 4))
-        self.freq = freq
+        self.freq = freq #frecuencia del envio de datos
         self.topic = topic
         self.producer = KafkaProducer(bootstrap_servers='localhost:9092',
                                       value_serializer=lambda x: json.dumps(x).encode('utf-8'))
@@ -20,5 +20,5 @@ class Producer:
             time.sleep(self.freq)
 
 if __name__ == "__main__":
-    producer = Producer("./temperaturas.csv", "temperaturas", 5)
+    producer = Producer("temperaturas", 5)
     producer.enviar_dato()
