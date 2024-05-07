@@ -3,12 +3,11 @@ import numpy as np
 from functools import reduce
 
 """
-Notas: 6/5/2024
-    En la versión actual, el método "procesar" de la clase SistemaGestor devuelve los valores que cumplan cierta condición en vez de modificar
-    los parámetros correspondientes con el fin de llevar a cabo las pruebas de forma más sencilla (por ejemplo, si detecta una temperatura que supera
-    el umbral dado, el parámetro self.supera_umbral pasaría a True(o la tupla de valores correspondientes), pero en la versión actual devuelve 
-    las temperaturas que superan el umbral en vez de realizar la modificación).
-
+Versión 7/5/2024:
+    En la versión actual, se ha implementado los métodos "realizar_operacion" de las clases "Umbral", "Sobrecrecimiento" utilizando **kwargs, consiguiendo
+    una implementación más flexible y eliminando alguna comprobación innecesaria. Se ha adaptado el método "procesar" de "SistemaGestor" acorde a los cambios, y
+    se ha modificado el caso de ejemplo.
+    
 """
 
 
@@ -24,6 +23,7 @@ class SistemaGestor:
         self.supera_umbral = False
         self.sobrecrecimiento = False
         self.ops = ["estadisticos", "umbral", "sobrecrecimiento"]
+
 
 
     @classmethod
@@ -66,14 +66,11 @@ class SistemaGestor:
                 for e in estrategias:
                     op3.set_estrategia(e)
                     op3.realizar_operacion(op, self.estadisticos, list(zip(*self.datos))[1])
-            
-            elif op == "umbral":
-                resultado = op2.realizar_operacion(op, self.datos, self.umbral)
-                print(resultado)
 
             else:
-                resultado = op1.realizar_operacion(op, self.datos)
-                print(resultado)
+                op2.realizar_operacion(gestor= self, op = op, l = self.datos, umbral=self.umbral)
+                #print(resultado)
+            
             
     
 
@@ -110,6 +107,7 @@ class Manejador(ABC):
     
     def set_manejador(self):
         pass
+
 
 #R4. Strategy (dentro del R3)
 class Strategy:
@@ -167,26 +165,42 @@ class Estadistico(Manejador):
 
 
 class Umbral(Manejador):
-    def realizar_operacion(self, op, l, umbral):
+    def realizar_operacion(self, **kwargs):
+        op = kwargs["op"]
+
         if op == "umbral":
+            umbral = kwargs["umbral"]
+            l = kwargs["l"]
+            gestor = kwargs["gestor"]
+
             overheat = list(filter(lambda x: x[1] > umbral, l))
 
             if len(overheat) == 0:
-                return False
-            
-            return overheat
+                gestor.supera_umbral = False
+                #return False
+
+            else:
+                gestor.supera_umbral = overheat
+                #return overheat
         
         elif self.successor:
-            self.successor.realizar_operacion(op)
+            self.successor.realizar_operacion(**kwargs)
     
     def set_manejador(self, nuevo_manejador):
         self.successor = nuevo_manejador
 
 class Sobrecrecimiento(Manejador):
-    def realizar_operacion(self, op, l):
+    def realizar_operacion(self, **kwargs):
+        op = kwargs["op"]
+
         if op == "sobrecrecimiento":
+            gestor = kwargs["gestor"]
+            l = kwargs["l"]
+
             if len(l) <= 1:
-                return False
+                gestor.sobrecrecimiento = False
+                return 0 #para terminar el procesamiento
+                #return False
             
             elif len(l) <= 6:
                 l30s = l
@@ -201,17 +215,19 @@ class Sobrecrecimiento(Manejador):
             while i < len(l30s):
                 while j < len(l30s):
                     if l30s[j][1] - l30s[i][1] >= 10:
-                        return [l30s[i], l30s[j]]
+
+                        gestor.sobrecrecimiento = [l30s[i], l30s[j]] #Devuelve la primera pareja de temperaturas cuya diferencia supera los 10º
+                        return 0
                     
                     j = j + 1
 
                 i = i + 1
                 j = i + 1
 
-            return False
+            gestor.sobrecrecimiento = False
 
         elif self.successor:
-            self.successor.realizar_operacion(op)
+            self.successor.realizar_operacion(**kwargs)
     
     def set_manejador(self, nuevo_manejador):
         self.successor = nuevo_manejador
@@ -224,8 +240,11 @@ if __name__ == "__main__":
 
     #Pruebas
     for i in range(12):
-        sensor.enviar_dato((i, i*2 + 10))
+        sensor.enviar_dato((i*5, i*i))
 
     gestor.set_umbral(30)
-    print(gestor.datos)
+    print("Datos obtenidos", gestor.datos)
     gestor.procesar()
+    print("Estadisticos: ", gestor.estadisticos)
+    print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", gestor.sobrecrecimiento)
+    print("Temperaturas que superan el umbral: ", gestor.supera_umbral)
