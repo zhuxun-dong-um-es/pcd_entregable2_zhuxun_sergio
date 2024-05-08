@@ -3,10 +3,12 @@ import numpy as np
 from functools import reduce
 
 """
-Versión 7/5/2024:
-    En la versión actual, se ha implementado los métodos "realizar_operacion" de las clases "Umbral", "Sobrecrecimiento" utilizando **kwargs, consiguiendo
-    una implementación más flexible y eliminando alguna comprobación innecesaria. Se ha adaptado el método "procesar" de "SistemaGestor" acorde a los cambios, y
-    se ha modificado el caso de ejemplo.
+Versión 8/5/2024:
+    Se ha modificado el cálculo de los cuartiles de la primera de las estrategias. Además se ha suprimido un cálculo extra
+    de la mediana.
+    
+    Cambio del orden de definición de las clases de las estrategias concretas (Quantile y MeanSV) acorde al orden descrito
+    en el enunciado del entregable.
     
 """
 
@@ -111,19 +113,30 @@ class Manejador(ABC):
 
 #R4. Strategy (dentro del R3)
 class Strategy:
-    def estrategia(self):
+    def estrategia(self, d, l):
         pass
 
 class MeanSV(Strategy):
     def estrategia(self, d, l):
         n = len(l)
         mean = round(reduce(lambda x, y: x+y, l) / n, 4)
-        median = round(list(map(lambda x: x[(n+1)//2 - 1] if n%2 == 1 else ((x[n//2 - 1] + x[(n//2 - 1)+1])/2), [l]))[0], 4)
         sv = round(np.sqrt(sum(map(lambda x: (x-mean)**2, l))/(n-1)), 4) if (n-1) != 0 else 0
             
         d["media"] = mean
-        d["mediana"] = median
         d["Desviacion Tipica"] = sv
+
+class Quantile(Strategy):
+    def estrategia(self, d, l):
+        n = len(l)
+        l_ordenado = sorted(l)
+        q25 = list(map(lambda x: x[(n+1)//4 - 1] if (n+1)%4 == 0 else ((x[(n+1)//4 - 1] + x[(n+1)//4])/2), [l_ordenado]))[0]
+        median = list(map(lambda x: x[(n-1)//2] if n%2 == 1 else ((x[(n-1)//2] + x[n//2])/2), [l_ordenado]))[0]
+        q75 = list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[(3*(n+1))//4])/2), [l_ordenado]))[0]
+        print(q25, median, q75)
+
+        d["mediana"] = median
+        d["Q1"] = q25
+        d["Q3"] = q75
 
 class MaxMin(Strategy):
     def estrategia(self, d, l):
@@ -132,18 +145,6 @@ class MaxMin(Strategy):
 
         d["max"] = maximo
         d["min"] = minimo
-
-class Quantile(Strategy):
-    def estrategia(self, d, l):
-        n = len(l)
-        l_ordenado = sorted(l)
-        median = list(map(lambda x: x[(n+1)//2 - 1] if n%2 == 1 else ((x[n//2 - 1] + x[(n//2 - 1)+1])/2), [l_ordenado]))[0]
-        q25 = list(map(lambda x: x[(n+1)//4 - 1], [l_ordenado]))[0]
-        q75 = list(map(lambda x: x[(3*(n+1))//4 - 1], [l_ordenado]))[0]
-
-        d["mediana"] = median
-        d["Q1"] = q25
-        d["Q3"] = q75
 
 class Estadistico(Manejador):
     def __init__(self, successor = None):
