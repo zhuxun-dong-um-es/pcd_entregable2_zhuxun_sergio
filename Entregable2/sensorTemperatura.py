@@ -10,6 +10,8 @@ Versión 8/5/2024:
     Cambio del orden de definición de las clases de las estrategias concretas (Quantile y MeanSV) acorde al orden descrito
     en el enunciado del entregable.
     
+    Corrección error mediana.
+    
 """
 
 
@@ -131,7 +133,7 @@ class Quantile(Strategy):
         l_ordenado = sorted(l)
         q25 = list(map(lambda x: x[(n+1)//4 - 1] if (n+1)%4 == 0 else ((x[(n+1)//4 - 1] + x[(n+1)//4])/2), [l_ordenado]))[0]
         median = list(map(lambda x: x[(n-1)//2] if n%2 == 1 else ((x[(n-1)//2] + x[n//2])/2), [l_ordenado]))[0]
-        q75 = list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[(3*(n+1))//4])/2), [l_ordenado]))[0]
+        q75 = list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[((3*(n+1))//4)%n])/2), [l_ordenado]))[0]
         print(q25, median, q75)
 
         d["mediana"] = median
