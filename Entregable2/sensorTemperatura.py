@@ -23,10 +23,8 @@ class SistemaGestor:
         self._umbral = np.inf #Valor del umbral inicializado a infinito, que posteriormente se podrá cambiar
         self._supera_umbral = False #Almacena una lista de datos (timestamp, temperatura) donde temperatura supere el umbral establecido
         self._sobrecrecimiento = False #Almacena el primer par de datos (timestamp, temperatura) de los últimos 30 segundos (últimos 6 elementos)
-                                    # en que la diferencia de temperaturas es mayor que 10.
+                                       # en que la diferencia de temperaturas es mayor que 10.
         self._ops = ["estadisticos", "umbral", "sobrecrecimiento"] #Operaciones del patrón Chain of Responsibilities
-
-
 
     @classmethod
     def get_instance(cls):
@@ -51,9 +49,9 @@ class SistemaGestor:
         la más antigua para almacenar el último dato.
         """
 
-        #Cuando se quiere añadir un dato cuando hemos alcanzado los 12 datos,
-        # eliminamos el primero y desplazamos todos los restantes una posición
-        # a la izda, y colocamos en la última posición el nuevo dato. 
+        # Cuando se quiere añadir un dato cuando hemos alcanzado los 12 datos,
+        #eliminamos el primero y desplazamos todos los restantes una posición
+        #a la izda, y colocamos en la última posición el nuevo dato. 
         if len(self._datos) == 12:
             i = 1
             while i < 11:
@@ -66,21 +64,20 @@ class SistemaGestor:
         
         self._procesar() #Una vez añadido el nuevo dato, realizamos las operaciones sobre la lista de datos.
     
-    
-    # Hace uso del patrón Chain of Responsibilities
+    #Hace uso del patrón Chain of Responsibilities
     # Estadistico -> Umbral -> Sobrecrecimiento
     def _procesar(self):
         """
         Se lleva a cabo los 3 pasos requeridos usando el patrón
         Chain of Responsibilities.
         """
-        #Instanciamos los manejadores
+        # Instanciamos los manejadores
         op1 = Sobrecrecimiento()
         op2 = Umbral(successor=op1)
         op3 = Estadistico(successor=op2)
 
         for op in self._ops: #Se ha separado del resto la operacion Estadistico ya que
-                            # se ha utilizado el patrón Strategy para la implementación de esta.
+                             # se ha utilizado el patrón Strategy para la implementación de esta.
             if op == "estadisticos":
                 e1 = MeanSV() #Instanciamos las distintas estrategias
                 e2 = MaxMin()
@@ -105,9 +102,7 @@ class SistemaGestor:
         print("Estadisticos: ", self._estadisticos)
         print(f"Temperaturas que superan el umbral de {self._umbral}ºC: ", self._supera_umbral)
         print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", self._sobrecrecimiento)
-            
-            
-    
+
 
 #R2. Observer
 """
@@ -145,6 +140,7 @@ class Observable:
         
         else:
             raise Exception("Cliente no activado o no es SistemaGestor!")
+
 
 class Sensor(Observable):
     """
@@ -208,7 +204,7 @@ class Strategy:
 
 class MeanSV(Strategy): #Estrategia concreta encargada de calcular la media y la desviación típica
     def _estrategia(self, d, l): #Como los diccionarios y las listas se pasan por referencia, podemos usarlos como parámetros directamente
-                                 #y modificarlas.
+                                 # y modificarlas.
         """
         Calcula la media y la desviación típica de la lista de datos, y serán almacenadas en el diccionario de estadísticos
         pasado como parámetro.
@@ -216,13 +212,14 @@ class MeanSV(Strategy): #Estrategia concreta encargada de calcular la media y la
         n = len(l)
         mean = round(reduce(lambda x, y: x+y, l) / n, 4) #media
         sv = round(np.sqrt(sum(map(lambda x: (x-mean)**2, l))/(n-1)), 4) if (n-1) != 0 else 0 #desviación típica
-        # Para el cálculo de la desviación, como depende del tamaño de la lista de datos, en caso
+        #Para el cálculo de la desviación, como depende del tamaño de la lista de datos, en caso
         # de que esta sea 1, tendremos un error de división nula, luego si el denominador
         # es nulo, la desviación lo ponemos a 0.
         
         #Actualizamos el diccionario de estadísticos
         d["media"] = mean
         d["Desviacion Tipica"] = sv
+
 
 class Quantile(Strategy): #Estrategia encargada de calcular los cuantiles (cuartiles solo)
     def _estrategia(self, d, l):
@@ -232,11 +229,11 @@ class Quantile(Strategy): #Estrategia encargada de calcular los cuantiles (cuart
         """
         n = len(l)
         l_ordenado = sorted(l) #Los cuantiles se calculan con la lista ordenada.
-        # El cálculo difiere dependiento de si la longitud de la lista de datos es par o impar:
+        #El cálculo difiere dependiento de si la longitud de la lista de datos es par o impar:
         q25 = round(list(map(lambda x: x[(n+1)//4 - 1] if (n+1)%4 == 0 else ((x[(n+1)//4 - 1] + x[(n+1)//4])/2), [l_ordenado]))[0], 4)
         median = round(list(map(lambda x: x[(n-1)//2] if n%2 == 1 else ((x[(n-1)//2] + x[n//2])/2), [l_ordenado]))[0], 4)
         q75 = round(list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[((3*(n+1))//4)%n])/2), [l_ordenado]))[0], 4)
-        # Sólo por poder usar map en el cómputo, se ha pasado a dicha función el valor [lista_ordenada], así el map
+        #Sólo por poder usar map en el cómputo, se ha pasado a dicha función el valor [lista_ordenada], así el map
         # recibe una lista de 1 único elemento, que es la lista de datos ordenados, y realiza el cálculo correspondiente
         # devolviendo un generador, que lo pasamos a lista y este contendrá únicamente el cuartil buscado (lo extraemos con el índice 0).
 
@@ -244,6 +241,7 @@ class Quantile(Strategy): #Estrategia encargada de calcular los cuantiles (cuart
         d["mediana"] = median
         d["Q1"] = q25
         d["Q3"] = q75
+
 
 class MaxMin(Strategy): #Estrategia encargada de calcular el máximo y el mínimo.
     def _estrategia(self, d, l):
@@ -257,6 +255,7 @@ class MaxMin(Strategy): #Estrategia encargada de calcular el máximo y el mínim
 
         d["max"] = maximo
         d["min"] = minimo
+
 
 class Estadistico(Manejador):
     """
@@ -294,7 +293,7 @@ class Umbral(Manejador):
         """
         Realiza la operación si le corresponde. Sino, lo pasa a su sucesor.
         """
-        # Aquí recalcar el uso del parámetro **kwargs: el principal motivo de esto es ahorrarnos comprobaciones innecesarias
+        #Aquí recalcar el uso del parámetro **kwargs: el principal motivo de esto es ahorrarnos comprobaciones innecesarias
         # a la hora de llamar a estos métodos desde el sistema gestor. Como para cada paso u operación, los parámetros
         # requeridos se difieren, usamos **kwargs para poder pasarles todos los parámetros que queramos y extraer
         # únicamente los que vamos a usar, eliminando así la necesidad de comprobar qué operación vamos a hacer
@@ -335,21 +334,21 @@ class Sobrecrecimiento(Manejador):
         if op == "sobrecrecimiento":
             l = kwargs["l"]
             gestor = kwargs["gestor"] #Necesitamos el propio gestor para poder modificar el atributo correspondiente, que 
-                                    # no se se pasa por referencia.
+                                      # no se se pasa por referencia.
 
             if len(l) <= 1: #Si sólo hay 1 dato, no ninguno, no podemos comparar, luego no hay crecimiento.
                 gestor._sobrecrecimiento = False
                 return 0 #para terminar el procesamiento
             
             elif len(l) <= 6: #Si hay menos de 6 datos (han pasado menos de 30 segundos), seleccionamos todos los datos
-                                # para comprobar si hay crecimiento de más de 10 grados con cada pareja.
+                              # para comprobar si hay crecimiento de más de 10 grados con cada pareja.
                 l30s = l
             
             else: #Si hay más de 6 datos (han pasado más de 30 segundos), cogemos los últimos 6 datos (últimos 30 segundos) 
-                    #para hacer la búsqueda
+                  # para hacer la búsqueda
                 l30s = l[-6:]
 
-            #La búsqueda en sí lo haremos usando doble puntero (o índice).
+            #La búsqueda en sí la haremos usando doble puntero (o índice).
             #La idea es simple: empezamos con el dato más antiguo (el de hace 30 segundos) fijando un puntero sobre él (i), y
             # con el otro puntero apuntado al siguiente dato a este (j), comparamos las temperaturas haciendo la diferencia
             # de temp[j] - temp[i]. Si esta diferencia resulta ser superior a 10, significa que ha habido un crecimiento mayor
@@ -375,18 +374,20 @@ class Sobrecrecimiento(Manejador):
                 j = i + 1
 
             gestor._sobrecrecimiento = False #Si hemos terminado el bucle y en ningún momento se ha interrumpido
-                                            # por haber encontrado una pareja cuya diferencia sea superior a 10,
-                                            # significa que durante los últimos 30 segundos, no ha habido un crecimiento
-                                            # de ese nivel.
+                                             # por haber encontrado una pareja cuya diferencia sea superior a 10,
+                                             # significa que durante los últimos 30 segundos, no ha habido un crecimiento
+                                             # de ese nivel.
 
         elif self._successor:
             self._successor._realizar_operacion(**kwargs)
+
+
 
 #### PRUEBAS ####
 if __name__ == "__main__":
     gestor = SistemaGestor.get_instance() #Obtenemos una instancia del sistema gestor
     sensor = Sensor() #Obtenemos una instancia del sensor, que será quién envíe los datos (el observable)
-    sensor.activar(gestor) # "Conectamos" el gestor con el sensor.
+    sensor.activar(gestor) #"Conectamos" el gestor con el sensor.
 
     gestor.set_umbral(30) #Establecemos el umbral de temperatura
 
@@ -396,7 +397,7 @@ if __name__ == "__main__":
     while time.time() <= time_end: #Mientras que el tiempo de actual sea menor a tiempo de terminación
         sensor._enviar_dato((time.time(), round(random.uniform(20,40), 4))) #Enviamos un dato aleatorio al cliente
         gestor.mostrar_info() #Mostramos cierta información de interés cada vez que enviamos un dato
-                                # para observar cómo se va actualizando
+                              # para observar cómo se va actualizando
         time.sleep(5)
         print("\n"*3)
 

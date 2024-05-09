@@ -13,11 +13,18 @@ def test_DataLength():
     sensor.activar(gestor)
 
     for i in range(13):
-        sensor.enviar_dato((i*5, i*i))
+        sensor._enviar_dato((i*5, i*i))
 
-    assert((len(gestor.datos) == 12))
+    assert((len(gestor._datos) == 12))
 
+def test_registro_gestor():
+    gestor = SistemaGestor.get_instance()
+    sensor = Sensor()
+    sensor.activar(gestor)
+    
+    assert((sensor._cliente == gestor))
 
 if __name__ == "__main__":
     test_Singleton()
     test_DataLength()
+    test_registro_gestor()
