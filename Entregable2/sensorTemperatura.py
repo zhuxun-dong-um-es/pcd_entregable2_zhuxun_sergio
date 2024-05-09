@@ -21,7 +21,7 @@ class SistemaGestor:
     _unicaInstancia = None
 
     def __init__(self):
-        self.datos = [] #Lista de datos, que en principio almacenaremos 12
+        self.datos = [] #Lista de datos, con un máximo de 12
         self.estadisticos = {} #Diccionario de estadísticos
         self.umbral = np.inf
         self.supera_umbral = False
@@ -41,16 +41,16 @@ class SistemaGestor:
 
     def actualizar(self, dato):
         if len(self.datos) == 12:
-
             i = 1
             while i < 11:
                 aux = self.datos[i]
                 self.datos[i-1] = aux
                 i = i + 1
             self.datos[-1] = dato
-        
         else:
             self.datos.append(dato)
+        
+        self.procesar()
     
     
     # Estadistico -> Umbral -> Sobrecrecimiento
@@ -73,7 +73,6 @@ class SistemaGestor:
 
             else:
                 op2.realizar_operacion(gestor= self, op = op, l = self.datos, umbral=self.umbral)
-                #print(resultado)
             
             
     
@@ -134,7 +133,6 @@ class Quantile(Strategy):
         q25 = list(map(lambda x: x[(n+1)//4 - 1] if (n+1)%4 == 0 else ((x[(n+1)//4 - 1] + x[(n+1)//4])/2), [l_ordenado]))[0]
         median = list(map(lambda x: x[(n-1)//2] if n%2 == 1 else ((x[(n-1)//2] + x[n//2])/2), [l_ordenado]))[0]
         q75 = list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[((3*(n+1))//4)%n])/2), [l_ordenado]))[0]
-        print(q25, median, q75)
 
         d["mediana"] = median
         d["Q1"] = q25
@@ -242,12 +240,18 @@ if __name__ == "__main__":
     sensor.activar(gestor)
 
     #Pruebas
+    gestor.set_umbral(30)
     for i in range(12):
         sensor.enviar_dato((i*5, i*i))
-
+        print("Estadisticos: ", gestor.estadisticos)
+        print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", gestor.sobrecrecimiento)
+        print("Temperaturas que superan el umbral: ", gestor.supera_umbral)
+        print("\n"*3)
+    '''
     gestor.set_umbral(30)
     print("Datos obtenidos", gestor.datos)
     gestor.procesar()
     print("Estadisticos: ", gestor.estadisticos)
     print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", gestor.sobrecrecimiento)
     print("Temperaturas que superan el umbral: ", gestor.supera_umbral)
+    '''
