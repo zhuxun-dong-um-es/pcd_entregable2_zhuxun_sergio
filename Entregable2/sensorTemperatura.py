@@ -102,7 +102,6 @@ class SistemaGestor:
         """
         Imprime algunos atributos de interés del sistema gestor.
         """
-        print("Datos actualmente en memoria: ", gestor._datos)
         print("Estadisticos: ", self._estadisticos)
         print(f"Temperaturas que superan el umbral de {self._umbral}ºC: ", self._supera_umbral)
         print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", self._sobrecrecimiento)
@@ -288,12 +287,14 @@ class Estadistico(Manejador):
 class Umbral(Manejador):
     """
     Clase manejador encargado de comprobar si hay alguna temperatura que supera el umbral establecido.
+    Se ha decidido comprobar todos los timestamps de los últimos 60 segundos en vez de únicamente el último (actual), como
+    dice en el enunciado, para poder hacer uso de funciones de orden superior, como es el caso de filter.
     """
     def _realizar_operacion(self, **kwargs):
         """
         Realiza la operación si le corresponde. Sino, lo pasa a su sucesor.
         """
-        #Aquí recalcar el uso del parámetro **kwargs: el principal motivo de esto es ahorrarnos comprobaciones innecesarias
+        # Aquí recalcar el uso del parámetro **kwargs: el principal motivo de esto es ahorrarnos comprobaciones innecesarias
         # a la hora de llamar a estos métodos desde el sistema gestor. Como para cada paso u operación, los parámetros
         # requeridos se difieren, usamos **kwargs para poder pasarles todos los parámetros que queramos y extraer
         # únicamente los que vamos a usar, eliminando así la necesidad de comprobar qué operación vamos a hacer
@@ -304,8 +305,8 @@ class Umbral(Manejador):
             umbral = kwargs["umbral"]
             l = kwargs["l"]
             gestor = kwargs["gestor"] #El hecho de que exista o no temperaturas que superen el umbral está controlado
-                                    # por un atributo del sistema gestor, luego debemos pasarle la propia instancia
-                                    # del sistema gestor y modificar el atributo correspondiente.
+                                      # por un atributo del sistema gestor, luego debemos pasarle la propia instancia
+                                      # del sistema gestor y modificar el atributo correspondiente.
 
             overheat = list(filter(lambda x: x[1] > umbral, l)) #Filtramos la lista de temperaturas
 
