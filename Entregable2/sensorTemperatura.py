@@ -73,6 +73,11 @@ class SistemaGestor:
 
             else:
                 op2.realizar_operacion(gestor= self, op = op, l = self.datos, umbral=self.umbral)
+    
+    def mostrar_info(self):
+        print("Estadisticos: ", self.estadisticos)
+        print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", self.sobrecrecimiento)
+        print("Temperaturas que superan el umbral: ", self.supera_umbral)
             
             
     
@@ -82,8 +87,8 @@ class Observable:
     def __init__(self):
         self.cliente = None
 
-    def activar(self, observer):
-        self.cliente = observer
+    def activar(self, gestor):
+        self.cliente = gestor
 
     def desactivar(self):
         self.cliente = None
@@ -107,14 +112,11 @@ class Manejador(ABC):
     
     def realizar_operacion(self):
         pass
-    
-    def set_manejador(self):
-        pass
 
 
 #R4. Strategy (dentro del R3)
 class Strategy:
-    def estrategia(self, d, l):
+    def estrategia(self):
         pass
 
 class MeanSV(Strategy):
@@ -156,13 +158,10 @@ class Estadistico(Manejador):
 
     def realizar_operacion(self, op, d, l):
         if op == "estadisticos":
-            self.estrategia.estrategia(d,l)
+            self.estrategia.estrategia(d, l)
         
         elif self.successor:
             self.successor.realizar_operacion(op)
-        
-    def set_manejador(self, nuevo_manejador):
-        self.successor = nuevo_manejador
 
 
 class Umbral(Manejador):
@@ -186,17 +185,15 @@ class Umbral(Manejador):
         
         elif self.successor:
             self.successor.realizar_operacion(**kwargs)
-    
-    def set_manejador(self, nuevo_manejador):
-        self.successor = nuevo_manejador
+
 
 class Sobrecrecimiento(Manejador):
     def realizar_operacion(self, **kwargs):
         op = kwargs["op"]
 
         if op == "sobrecrecimiento":
-            gestor = kwargs["gestor"]
             l = kwargs["l"]
+            gestor = kwargs["gestor"]
 
             if len(l) <= 1:
                 gestor.sobrecrecimiento = False
@@ -229,9 +226,6 @@ class Sobrecrecimiento(Manejador):
 
         elif self.successor:
             self.successor.realizar_operacion(**kwargs)
-    
-    def set_manejador(self, nuevo_manejador):
-        self.successor = nuevo_manejador
 
 
 if __name__ == "__main__":
@@ -243,9 +237,7 @@ if __name__ == "__main__":
     gestor.set_umbral(30)
     for i in range(12):
         sensor.enviar_dato((i*5, i*i))
-        print("Estadisticos: ", gestor.estadisticos)
-        print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", gestor.sobrecrecimiento)
-        print("Temperaturas que superan el umbral: ", gestor.supera_umbral)
+        gestor.mostrar_info()
         print("\n"*3)
     '''
     gestor.set_umbral(30)
