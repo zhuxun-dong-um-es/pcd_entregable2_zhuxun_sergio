@@ -18,13 +18,13 @@ class SistemaGestor:
     _unicaInstancia = None #Se usará posteriomente para controlar la existencia de una única instancia de esta clase
 
     def __init__(self):
-        self.datos = [] #Lista de datos, con un máximo de 12 (60 segundos)
-        self.estadisticos = {} #Diccionario de estadísticos
-        self.umbral = np.inf #Valor del umbral inicializado a infinito, que posteriormente se podrá cambiar
-        self.supera_umbral = False #Almacena una lista de datos (timestamp, temperatura) donde temperatura supere el umbral establecido
-        self.sobrecrecimiento = False #Almacena el primer par de datos (timestamp, temperatura) de los últimos 30 segundos (últimos 6 elementos)
+        self._datos = [] #Lista de datos, con un máximo de 12 (60 segundos)
+        self._estadisticos = {} #Diccionario de estadísticos
+        self._umbral = np.inf #Valor del umbral inicializado a infinito, que posteriormente se podrá cambiar
+        self._supera_umbral = False #Almacena una lista de datos (timestamp, temperatura) donde temperatura supere el umbral establecido
+        self._sobrecrecimiento = False #Almacena el primer par de datos (timestamp, temperatura) de los últimos 30 segundos (últimos 6 elementos)
                                     # en que la diferencia de temperaturas es mayor que 10.
-        self.ops = ["estadisticos", "umbral", "sobrecrecimiento"] #Operaciones del patrón Chain of Responsibilities
+        self._ops = ["estadisticos", "umbral", "sobrecrecimiento"] #Operaciones del patrón Chain of Responsibilities
 
 
 
@@ -42,9 +42,9 @@ class SistemaGestor:
         """
         Método para establecer el umbral de temperatura.
         """
-        self.umbral = umbral
+        self._umbral = umbral
 
-    def actualizar(self, dato):
+    def _actualizar(self, dato):
         """
         Actualiza los datos almacenados al recibir un nuevo dato, manteniendo
         únicamente 12 datos (60 segundos). Si se supera esta cantidad, se elimina 
@@ -54,22 +54,22 @@ class SistemaGestor:
         #Cuando se quiere añadir un dato cuando hemos alcanzado los 12 datos,
         # eliminamos el primero y desplazamos todos los restantes una posición
         # a la izda, y colocamos en la última posición el nuevo dato. 
-        if len(self.datos) == 12:
+        if len(self._datos) == 12:
             i = 1
             while i < 11:
-                aux = self.datos[i]
-                self.datos[i-1] = aux
+                aux = self._datos[i]
+                self._datos[i-1] = aux
                 i = i + 1
-            self.datos[-1] = dato
+            self._datos[-1] = dato
         else: #Si no se ha alcanzado el límite, simplemente lo añadimos a la lista
-            self.datos.append(dato)
+            self._datos.append(dato)
         
-        self.procesar() #Una vez añadido el nuevo dato, realizamos las operaciones sobre la lista de datos.
+        self._procesar() #Una vez añadido el nuevo dato, realizamos las operaciones sobre la lista de datos.
     
     
     # Hace uso del patrón Chain of Responsibilities
     # Estadistico -> Umbral -> Sobrecrecimiento
-    def procesar(self):
+    def _procesar(self):
         """
         Se lleva a cabo los 3 pasos requeridos usando el patrón
         Chain of Responsibilities.
@@ -79,7 +79,7 @@ class SistemaGestor:
         op2 = Umbral(successor=op1)
         op3 = Estadistico(successor=op2)
 
-        for op in self.ops: #Se ha separado del resto la operacion Estadistico ya que
+        for op in self._ops: #Se ha separado del resto la operacion Estadistico ya que
                             # se ha utilizado el patrón Strategy para la implementación de esta.
             if op == "estadisticos":
                 e1 = MeanSV() #Instanciamos las distintas estrategias
@@ -87,8 +87,8 @@ class SistemaGestor:
                 e3 = Quantile()
                 estrategias = [e1, e2, e3]
                 for e in estrategias: #Calculamos los estadísticos de cada estrategia
-                    op3.set_estrategia(e)
-                    op3.realizar_operacion(op, self.estadisticos, list(zip(*self.datos))[1])
+                    op3._set_estrategia(e)
+                    op3._realizar_operacion(op, self._estadisticos, list(zip(*self._datos))[1])
                     #El último parámetro lo que hace es: separar los pares de elementos de cada tupla (timestamp, temp) que forma
                     # parte de la lista de datos, almacenar cada una de ellas en una tupla distinta, consiguiendo asi
                     # otra lista cuyo primer elemento es una tupla de todos los timestamps, y la segunda, otra tupla de 
@@ -96,15 +96,16 @@ class SistemaGestor:
                     # calcular los estadísticos.
 
             else:
-                op2.realizar_operacion(gestor= self, op = op, l = self.datos, umbral=self.umbral)
+                op2._realizar_operacion(gestor = self, op = op, l = self._datos, umbral = self._umbral)
     
     def mostrar_info(self):
         """
         Imprime algunos atributos de interés del sistema gestor.
         """
-        print("Estadisticos: ", self.estadisticos)
-        print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", self.sobrecrecimiento)
-        print("Temperaturas que superan el umbral: ", self.supera_umbral)
+        print("Datos actualmente en memoria: ", gestor._datos)
+        print("Estadisticos: ", self._estadisticos)
+        print(f"Temperaturas que superan el umbral de {self._umbral}ºC: ", self._supera_umbral)
+        print("Sobrecrecimiento detectado en los ultimos 30 seg (el primero): ", self._sobrecrecimiento)
             
             
     
@@ -120,13 +121,13 @@ class Observable:
     En nuestro caso, únicamente tenemos 1 cliente, el sistema gestor.
     """
     def __init__(self):
-        self.cliente = None
+        self._cliente = None
 
     def activar(self, gestor:SistemaGestor):
         """
         Establecer "conexión" con el cliente pasado como parámetro.
         """
-        self.cliente = gestor
+        self._cliente = gestor
 
     def desactivar(self):
         """
@@ -135,13 +136,13 @@ class Observable:
         self.cliente = None #En este caso, simplemente ponemos el atributo cliente a None,
                             # luego si tratamos de desactivar sin antes haber activado, no ocurriría ningún error.
 
-    def notificar(self, dato):
+    def _notificar(self, dato):
         """
         Notifica al cliente con el dato proporcionado como parámetro.
         Si no existe cliente activado o no es el sistema gestor, salta error.
         """
-        if isinstance(self.cliente, SistemaGestor):
-            self.cliente.actualizar(dato) #El sistema utiliza este nuevo dato para realizar todas las operaciones.
+        if isinstance(self._cliente, SistemaGestor):
+            self._cliente._actualizar(dato) #El sistema utiliza este nuevo dato para realizar todas las operaciones.
         
         else:
             raise Exception("Cliente no activado o no es SistemaGestor!")
@@ -154,15 +155,15 @@ class Sensor(Observable):
         """
         Almacena el último dato recolectado en un atributo
         """
-        self.dato = None
+        self._dato = None
 
-    def enviar_dato(self, dato):
+    def _enviar_dato(self, dato):
         """
         Notifica al cliente con el dato proporcionado como parámetro, haciendo uso
         del método notificar de la clse Observable.
         """
-        self.dato = dato
-        self.notificar(self.dato)
+        self._dato = dato
+        self._notificar(self._dato)
     
     def enviar_dato_tiempo_real(self, duracion):
         """
@@ -171,14 +172,13 @@ class Sensor(Observable):
         time_end = time.time() + duracion #Tiempo de finalización de envío de datos
         while time.time() <= time_end:
             dato = (time.time(), round(random.uniform(20,40),4)) #Los datos son generados aleatoriamente entre 20,40
-            self.enviar_dato(dato)
+            self._enviar_dato(dato)
             time.sleep(5) #Tras el envío de cada dato, esperamos 5 segundos
 """
 Nota: No se ha implementado la clase abstracta (o interfaz) Observer debido a que en este caso se establece
 explícita la existencia de una única instancia SistemaGestor(el observador, o nuestro cliente), por lo que 
 nos ha parecido redundante crear la clase Observer del que va a heredar únicamente un observador concreto.
 """
-
 
 
 #R3. Chain of responsibilities
@@ -192,9 +192,9 @@ class Manejador(ABC):
     Clase abstracta Manejador, del que heredarán todas las clases concretas que llevaran a cabo los 3 pasos.
     """
     def __init__(self, successor = None):
-        self.successor = successor
+        self._successor = successor
     
-    def realizar_operacion(self):
+    def _realizar_operacion(self):
         pass
 
 
@@ -204,12 +204,12 @@ Para el primer paso de los 3, pide explícitamente la implementación de varias 
 luego está claro que vamos a usar el patrón Strategy.
 """
 class Strategy:
-    def estrategia(self):
+    def _estrategia(self):
         pass
 
 class MeanSV(Strategy): #Estrategia concreta encargada de calcular la media y la desviación típica
-    def estrategia(self, d, l): #Como los diccionarios y las listas se pasan por referencia, podemos usarlos como parámetros directamente
-                                #y modificarlas.
+    def _estrategia(self, d, l): #Como los diccionarios y las listas se pasan por referencia, podemos usarlos como parámetros directamente
+                                 #y modificarlas.
         """
         Calcula la media y la desviación típica de la lista de datos, y serán almacenadas en el diccionario de estadísticos
         pasado como parámetro.
@@ -217,7 +217,7 @@ class MeanSV(Strategy): #Estrategia concreta encargada de calcular la media y la
         n = len(l)
         mean = round(reduce(lambda x, y: x+y, l) / n, 4) #media
         sv = round(np.sqrt(sum(map(lambda x: (x-mean)**2, l))/(n-1)), 4) if (n-1) != 0 else 0 #desviación típica
-        #para el cálculo de la desviación, como depende del tamaño de la lista de datos, en caso
+        # Para el cálculo de la desviación, como depende del tamaño de la lista de datos, en caso
         # de que esta sea 1, tendremos un error de división nula, luego si el denominador
         # es nulo, la desviación lo ponemos a 0.
         
@@ -226,18 +226,18 @@ class MeanSV(Strategy): #Estrategia concreta encargada de calcular la media y la
         d["Desviacion Tipica"] = sv
 
 class Quantile(Strategy): #Estrategia encargada de calcular los cuantiles (cuartiles solo)
-    def estrategia(self, d, l):
+    def _estrategia(self, d, l):
         """
         Calcula los cuartiles de la lista de datos, y serán almacenados en el diccionario de estadísticos
         pasado como parámetro.
         """
         n = len(l)
         l_ordenado = sorted(l) #Los cuantiles se calculan con la lista ordenada.
-        #dependiento de si la longitud de la lista de datos sea par o impar, el cálculo se difiere:
+        # El cálculo difiere dependiento de si la longitud de la lista de datos es par o impar:
         q25 = round(list(map(lambda x: x[(n+1)//4 - 1] if (n+1)%4 == 0 else ((x[(n+1)//4 - 1] + x[(n+1)//4])/2), [l_ordenado]))[0], 4)
         median = round(list(map(lambda x: x[(n-1)//2] if n%2 == 1 else ((x[(n-1)//2] + x[n//2])/2), [l_ordenado]))[0], 4)
         q75 = round(list(map(lambda x: x[(3*(n+1))//4 - 1] if (n+1)%4 == 0 else ((x[(3*(n+1))//4 - 1] + x[((3*(n+1))//4)%n])/2), [l_ordenado]))[0], 4)
-        #Sólo por poder usar map en el cómputo, se ha pasado a dicha función el valor [lista_ordenada], así el map
+        # Sólo por poder usar map en el cómputo, se ha pasado a dicha función el valor [lista_ordenada], así el map
         # recibe una lista de 1 único elemento, que es la lista de datos ordenados, y realiza el cálculo correspondiente
         # devolviendo un generador, que lo pasamos a lista y este contendrá únicamente el cuartil buscado (lo extraemos con el índice 0).
 
@@ -247,7 +247,7 @@ class Quantile(Strategy): #Estrategia encargada de calcular los cuantiles (cuart
         d["Q3"] = q75
 
 class MaxMin(Strategy): #Estrategia encargada de calcular el máximo y el mínimo.
-    def estrategia(self, d, l):
+    def _estrategia(self, d, l):
         """
         Calcula el máximo y el mínimo de la lista de datos, y serán almacenados en el diccionario de estadísticos
         pasado como parámetro.
@@ -266,30 +266,30 @@ class Estadistico(Manejador):
     """
     def __init__(self, successor = None):
         Manejador.__init__(self, successor = successor) #Como manejador, tendrá (o no) un sucesor
-        self.estrategia = None #Y como contexto, tendrá asignada una estrategia concreta
+        self._estrategia = None #Y como contexto, tendrá asignada una estrategia concreta
     
-    def set_estrategia(self, estrategia:Strategy):
+    def _set_estrategia(self, estrategia:Strategy):
         """
         Establece la estrategia que se va a usar.
         """
-        self.estrategia = estrategia
+        self._estrategia = estrategia
 
-    def realizar_operacion(self, op, d, l):
+    def _realizar_operacion(self, op, d, l):
         """
         Realiza la operación si le corresponde. Sino, lo pasa a su sucesor.
         """
         if op == "estadisticos":
-            self.estrategia.estrategia(d, l) #La operacion es realizada mediante una de las estrategias antes definidas.
+            self._estrategia._estrategia(d, l) #La operacion es realizada mediante una de las estrategias antes definidas.
         
-        elif self.successor:
-            self.successor.realizar_operacion(op)
+        elif self._successor:
+            self._successor._realizar_operacion(op)
 
 
 class Umbral(Manejador):
     """
     Clase manejador encargado de comprobar si hay alguna temperatura que supera el umbral establecido.
     """
-    def realizar_operacion(self, **kwargs):
+    def _realizar_operacion(self, **kwargs):
         """
         Realiza la operación si le corresponde. Sino, lo pasa a su sucesor.
         """
@@ -310,13 +310,13 @@ class Umbral(Manejador):
             overheat = list(filter(lambda x: x[1] > umbral, l)) #Filtramos la lista de temperaturas
 
             if len(overheat) == 0: #Si la lista filtrada está vacía, es que no hay ninguna temperatura superior al umbral.
-                gestor.supera_umbral = False
+                gestor._supera_umbral = False
 
             else: #Si no, guardamos la lista de temperaturas que superan el umbral en el atributo correspondiente.
-                gestor.supera_umbral = overheat
+                gestor._supera_umbral = overheat
         
-        elif self.successor:
-            self.successor.realizar_operacion(**kwargs)
+        elif self._successor:
+            self._successor._realizar_operacion(**kwargs)
 
 
 class Sobrecrecimiento(Manejador):
@@ -324,7 +324,7 @@ class Sobrecrecimiento(Manejador):
     Clase manejador encargado de comprobar si ha habido un crecimiento de temperatura superior a 10 grados
     en los últimos 30 segundos.
     """
-    def realizar_operacion(self, **kwargs):
+    def _realizar_operacion(self, **kwargs):
         """
         Realiza la operación si le corresponde. Sino, lo pasa a su sucesor.
         """
@@ -337,7 +337,7 @@ class Sobrecrecimiento(Manejador):
                                     # no se se pasa por referencia.
 
             if len(l) <= 1: #Si sólo hay 1 dato, no ninguno, no podemos comparar, luego no hay crecimiento.
-                gestor.sobrecrecimiento = False
+                gestor._sobrecrecimiento = False
                 return 0 #para terminar el procesamiento
             
             elif len(l) <= 6: #Si hay menos de 6 datos (han pasado menos de 30 segundos), seleccionamos todos los datos
@@ -365,7 +365,7 @@ class Sobrecrecimiento(Manejador):
                 while j < len(l30s):
                     if l30s[j][1] - l30s[i][1] >= 10:
 
-                        gestor.sobrecrecimiento = [l30s[i], l30s[j]] #Devolvemos la primera pareja de temperaturas cuya diferencia supera los 10º
+                        gestor._sobrecrecimiento = [l30s[i], l30s[j]] #Devolvemos la primera pareja de temperaturas cuya diferencia supera los 10º
                         return 0
                     
                     j = j + 1
@@ -373,13 +373,13 @@ class Sobrecrecimiento(Manejador):
                 i = i + 1
                 j = i + 1
 
-            gestor.sobrecrecimiento = False #Si hemos terminado el bucle y en ningún momento se ha interrumpido
+            gestor._sobrecrecimiento = False #Si hemos terminado el bucle y en ningún momento se ha interrumpido
                                             # por haber encontrado una pareja cuya diferencia sea superior a 10,
                                             # significa que durante los últimos 30 segundos, no ha habido un crecimiento
                                             # de ese nivel.
 
-        elif self.successor:
-            self.successor.realizar_operacion(**kwargs)
+        elif self._successor:
+            self._successor._realizar_operacion(**kwargs)
 
 #### PRUEBAS ####
 if __name__ == "__main__":
@@ -393,7 +393,7 @@ if __name__ == "__main__":
     n = 15
     time_end = time.time() + (n+1) #Tiempo de terminación. (+1) por el retardo que genera ciertas instrucciones.
     while time.time() <= time_end: #Mientras que el tiempo de actual sea menor a tiempo de terminación
-        sensor.enviar_dato((time.time(), round(random.uniform(20,40), 4))) #Enviamos un dato aleatorio al cliente
+        sensor._enviar_dato((time.time(), round(random.uniform(20,40), 4))) #Enviamos un dato aleatorio al cliente
         gestor.mostrar_info() #Mostramos cierta información de interés cada vez que enviamos un dato
                                 # para observar cómo se va actualizando
         time.sleep(5)
